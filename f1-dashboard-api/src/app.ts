@@ -1,67 +1,122 @@
-
 import express from 'express';
-import { createServer } from 'http';
-import { Server as SocketServer } from 'socket.io';
 import cors from 'cors';
 import helmet from 'helmet';
-import compression from 'compression';
+import { config } from 'dotenv';
+import { createServer } from 'http';
 
-import { errorHandler } from './middleware/errorHandler';
-import { rateLimiter } from './middleware/rateLimiter';
-import { initializeWebSocket } from './websocket/liveSocket';
-
-// Routes
-import yearsRouter from './routes/years';
-import meetingsRouter from './routes/meetings';
-import sessionsRouter from './routes/sessions';
-import resultsRouter from './routes/results';
-import telemetryRouter from './routes/telemetry';
-import liveRouter from './routes/live';
-
+import { testConnection, syncDatabase } from './config/database';
+import { connectRedis } from './config/redis';
 import { logger } from './utils/logger';
 
-const app = express();
-const httpServer = createServer(app);
-const io = new SocketServer(httpServer, {
-  cors: {
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
-    methods: ['GET', 'POST'],
-  },
-});
+import { errorHandler, notFoundHandler } from './middleware/errorHandler';
+import { apiLimiter } from './middleware/rateLimiter';
 
-// Middleware
+import yearsRoutes from './routes/years';
+import meetingsRoutes from './routes/meetings';
+import sessionsRoutes from './routes/sessions';
+import resultsRoutes from './routes/results';
+import telemetryRoutes from './routes/telemetry';
+import liveRoutes from './routes/live';
+
+import { initializeSocketIO } from './websocket/liveSocket';
+import { liveSessionService } from './services/liveSessionService';
+import { dataSyncService } from './services/dataSyncService';
+
+// Load environment variables
+config();
+
+const app = express();
+const server = createServer(app);
+const PORT = process.env.PORT || 3001;
+
+// Initialize WebSocket
+initializeSocketIO(server);
+
+// Security middleware
 app.use(helmet());
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
-  credentials: true,
+  origin: process.env.CLIENT_URL || '*',
+  credentials: true
 }));
-app.use(compression());
-app.use(express.json());
-app.use(rateLimiter);
 
-// API Routes
-app.use('/api/years', yearsRouter);
-app.use('/api/meetings', meetingsRouter);
-app.use('/api/sessions', sessionsRouter);
-app.use('/api/results', resultsRouter);
-app.use('/api/telemetry', telemetryRouter);
-app.use('/api/live', liveRouter);
+// Body parsing
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Rate limiting
+app.use('/api/', apiLimiter);
 
 // Health check
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
 });
+
+// API Routes
+app.use('/api/years', yearsRoutes);
+app.use('/api/meetings', meetingsRoutes);
+app.use('/api/sessions', sessionsRoutes);
+app.use('/api/results', resultsRoutes);
+app.use('/api/telemetry', telemetryRoutes);
+app.use('/api/live', liveRoutes);
 
 // Error handling
+app.use(notFoundHandler);
 app.use(errorHandler);
 
-// Initialize WebSocket
-initializeWebSocket(io);
+// Database initialization and server start
+const startServer = async (): Promise<void> => {
+  try {
+    // Test database connection
+    await testConnection();
+    
+    // Sync models (alter in dev, no force in production)
+    await syncDatabase(process.env.NODE_ENV === 'development');
+    
+    // Connect to Redis (optional)
+    await connectRedis();
+    
+    // Start server
+    server.listen(PORT, () => {
+      logger.info(`🚀 F1 Dashboard API running on port ${PORT}`);
+      logger.info(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+    });
 
-const PORT = process.env.PORT || 3000;
+    // Start live session detection
+    setInterval(() => {
+      liveSessionService.detectAndStartLiveSessions();
+    }, 60000); // Check every minute
 
-httpServer.listen(PORT, () => {
-  logger.info(`Server running on port ${PORT}`);
+    // Initial detection
+    liveSessionService.detectAndStartLiveSessions();
+
+    // Periodic sync of current sessions
+    setInterval(() => {
+      dataSyncService.syncCurrentSessions();
+    }, 300000); // Every 5 minutes
+
+  } catch (error) {
+    logger.error('Failed to start server:', error);
+    process.exit(1);
+  }
+};
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  logger.info('SIGTERM received, shutting down gracefully');
+  server.close(() => {
+    logger.info('Process terminated');
+  });
 });
 
-export { app, io };
+process.on('SIGINT', () => {
+  logger.info('SIGINT received, shutting down gracefully');
+  server.close(() => {
+    logger.info('Process terminated');
+  });
+});
+
+startServer();

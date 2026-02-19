@@ -1,34 +1,55 @@
-
-import { Pool, PoolConfig } from 'pg';
+import { Sequelize } from 'sequelize-typescript';
+import { config } from 'dotenv';
 import { logger } from '../utils/logger';
 
-const config: PoolConfig = {
+config();
+
+const sequelize = new Sequelize({
+  database: process.env.DB_NAME || 'postgres',
+  dialect: 'postgres',
   host: process.env.DB_HOST || 'localhost',
   port: parseInt(process.env.DB_PORT || '5432'),
-  database: process.env.DB_NAME || 'f1_dashboard',
-  user: process.env.DB_USER || 'f1user',
-  password: process.env.DB_PASSWORD || 'f1password',
-  max: 20, // Maximum pool size
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
-};
-
-export const pool = new Pool(config);
-
-pool.on('error', (err) => {
-  logger.error('Unexpected database error:', err);
-  process.exit(-1);
+  username: process.env.DB_USER || 'postgres',
+  password: process.env.DB_PASSWORD || '',
+  logging: process.env.NODE_ENV === 'development' ? console.log : false,
+  pool: {
+    max: 20,
+    min: 5,
+    acquire: 60000,
+    idle: 10000
+  },
+  dialectOptions: {
+    connectTimeout: 60000,
+    // For Arch Linux local development without SSL
+    ssl: process.env.NODE_ENV === 'production' ? {
+      require: true,
+      rejectUnauthorized: false
+    } : false
+  },
+  models: [__dirname + '/../models/*.ts'],
+  modelMatch: (filename, member) => {
+    return filename.substring(0, filename.indexOf('.ts')).toLowerCase() === member.toLowerCase();
+  }
 });
 
-export const query = async (text: string, params?: any[]) => {
-  const start = Date.now();
+export const testConnection = async (): Promise<void> => {
   try {
-    const result = await pool.query(text, params);
-    const duration = Date.now() - start;
-    logger.debug('Query executed', { text: text.substring(0, 50), duration, rows: result.rowCount });
-    return result;
+    await sequelize.authenticate();
+    logger.info('Database connection established successfully.');
   } catch (error) {
-    logger.error('Query error:', error);
+    logger.error('Unable to connect to the database:', error);
     throw error;
   }
 };
+
+export const syncDatabase = async (force: boolean = false): Promise<void> => {
+  try {
+    await sequelize.sync({ force, alter: !force });
+    logger.info('Database synchronized successfully.');
+  } catch (error) {
+    logger.error('Database synchronization failed:', error);
+    throw error;
+  }
+};
+
+export default sequelize;
