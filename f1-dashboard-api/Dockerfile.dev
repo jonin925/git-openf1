@@ -1,0 +1,21 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install PostgreSQL client and git for development
+RUN apk add --no-cache postgresql-client git
+
+# Copy package files
+COPY package*.json ./
+
+# Install all dependencies
+RUN npm install
+
+# Copy source code
+COPY . .
+
+# Expose ports
+EXPOSE 3001 3002
+
+# Start in development mode with hot reload
+CMD ["npm", "run", "dev"]

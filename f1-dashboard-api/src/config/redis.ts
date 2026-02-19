@@ -1,11 +1,11 @@
-import Redis from 'ioredis';
+bimport Redis from 'ioredis';
 import { config } from 'dotenv';
 import { logger } from '../utils/logger';
 
 config();
 
 const redisConfig = {
-  host: process.env.REDIS_HOST || 'localhost',
+  host: process.env.REDIS_HOST || 'redis', // Docker service name
   port: parseInt(process.env.REDIS_PORT || '6379'),
   password: process.env.REDIS_PASSWORD || undefined,
   retryStrategy: (times: number) => {
@@ -14,7 +14,11 @@ const redisConfig = {
   },
   maxRetriesPerRequest: 3,
   enableReadyCheck: true,
-  lazyConnect: true
+  lazyConnect: true,
+  // Docker networking settings
+  connectTimeout: 10000,
+  commandTimeout: 5000,
+  keepAlive: 30000
 };
 
 export const redis = new Redis(redisConfig);
@@ -22,9 +26,9 @@ export const redis = new Redis(redisConfig);
 export const connectRedis = async (): Promise<void> => {
   try {
     await redis.connect();
-    logger.info('Redis connection established successfully.');
+    logger.info('✅ Redis connection established successfully.');
   } catch (error) {
-    logger.warn('Redis connection failed. Continuing without cache:', error);
+    logger.warn('⚠️  Redis connection failed. Continuing without cache:', error);
     // Don't throw - Redis is optional
   }
 };

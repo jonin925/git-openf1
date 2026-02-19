@@ -7,21 +7,21 @@ config();
 const sequelize = new Sequelize({
   database: process.env.DB_NAME || 'postgres',
   dialect: 'postgres',
-  host: process.env.DB_HOST || 'localhost',
+  host: process.env.DB_HOST || 'postgres', // Default to Docker service name
   port: parseInt(process.env.DB_PORT || '5432'),
   username: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || '',
+  password: process.env.DB_PASSWORD || 'postgres',
   logging: process.env.NODE_ENV === 'development' ? console.log : false,
   pool: {
-    max: 20,
-    min: 5,
+    max: parseInt(process.env.DB_POOL_MAX || '20'),
+    min: parseInt(process.env.DB_POOL_MIN || '5'),
     acquire: 60000,
     idle: 10000
   },
   dialectOptions: {
     connectTimeout: 60000,
-    // For Arch Linux local development without SSL
-    ssl: process.env.NODE_ENV === 'production' ? {
+    // SSL only in production, not between containers
+    ssl: process.env.DB_SSL === 'true' ? {
       require: true,
       rejectUnauthorized: false
     } : false
@@ -35,9 +35,9 @@ const sequelize = new Sequelize({
 export const testConnection = async (): Promise<void> => {
   try {
     await sequelize.authenticate();
-    logger.info('Database connection established successfully.');
+    logger.info('✅ Database connection established successfully.');
   } catch (error) {
-    logger.error('Unable to connect to the database:', error);
+    logger.error('❌ Unable to connect to the database:', error);
     throw error;
   }
 };
@@ -45,9 +45,9 @@ export const testConnection = async (): Promise<void> => {
 export const syncDatabase = async (force: boolean = false): Promise<void> => {
   try {
     await sequelize.sync({ force, alter: !force });
-    logger.info('Database synchronized successfully.');
+    logger.info('✅ Database synchronized successfully.');
   } catch (error) {
-    logger.error('Database synchronization failed:', error);
+    logger.error('❌ Database synchronization failed:', error);
     throw error;
   }
 };
