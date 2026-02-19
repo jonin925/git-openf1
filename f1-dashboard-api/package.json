@@ -3,15 +3,19 @@
   "version": "1.0.0",
   "description": "F1 Dashboard API with OpenF1 integration",
   "main": "dist/app.js",
+
   "scripts": {
     "start": "node dist/app.js",
     "dev": "ts-node-dev --respawn --transpile-only src/app.ts",
     "build": "tsc",
-    "migrate": "psql -U postgres -d postgres -f migrations/001_initial_schema.sql",
+    "migrate": "docker exec -i f1-postgres-dev psql -U postgres -d f1dashboard_dev < migrations/001_initial_schema.sql",
+    "migrate:telemetry": "docker exec -i f1-postgres-dev psql -U postgres -d f1dashboard_dev < migrations/002_telemetry_tables.sql",
+    "sync:telemetry-2025": "ts-node scripts/sync-telemetry-2025.ts",
+    "sync:data": "ts-node src/scripts/syncData.ts",
     "test": "jest",
-    "lint": "eslint src/**/*.ts",
-    "sync:data": "ts-node src/scripts/syncData.ts"
+    "lint": "eslint src/**/*.ts"
   },
+
   "dependencies": {
     "axios": "^1.6.0",
     "cors": "^2.8.5",

@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -30,7 +31,11 @@ const server = createServer(app);
 const PORT = process.env.PORT || 3001;
 
 // Initialize WebSocket
-initializeSocketIO(server);
+try {
+  initializeSocketIO(server);
+} catch (error) {
+  logger.warn('WebSocket initialization failed:', error);
+}
 
 // Security middleware
 app.use(helmet());
@@ -88,7 +93,7 @@ const startServer = async (): Promise<void> => {
     // Start live session detection
     setInterval(() => {
       liveSessionService.detectAndStartLiveSessions();
-    }, 60000); // Check every minute
+    }, 60000);
 
     // Initial detection
     liveSessionService.detectAndStartLiveSessions();
@@ -96,7 +101,7 @@ const startServer = async (): Promise<void> => {
     // Periodic sync of current sessions
     setInterval(() => {
       dataSyncService.syncCurrentSessions();
-    }, 300000); // Every 5 minutes
+    }, 300000);
 
   } catch (error) {
     logger.error('Failed to start server:', error);

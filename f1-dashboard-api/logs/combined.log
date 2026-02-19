@@ -1,0 +1,12 @@
+{"level":"info","message":"✅ Database connection established successfully.","service":"f1-dashboard-api","timestamp":"2026-02-19T06:37:19.089Z"}
+{"level":"info","message":"✅ Database synchronized successfully.","service":"f1-dashboard-api","timestamp":"2026-02-19T06:37:19.592Z"}
+{"level":"info","message":"Redis connection established successfully.","service":"f1-dashboard-api","timestamp":"2026-02-19T06:37:19.603Z"}
+{"level":"info","message":"🚀 F1 Dashboard API running on port 3001","service":"f1-dashboard-api","timestamp":"2026-02-19T06:37:19.617Z"}
+{"level":"info","message":"📊 Environment: development","service":"f1-dashboard-api","timestamp":"2026-02-19T06:37:19.618Z"}
+{"level":"info","message":"SIGTERM received, shutting down gracefully","service":"f1-dashboard-api","timestamp":"2026-02-19T06:37:28.131Z"}
+{"level":"info","message":"Process terminated","service":"f1-dashboard-api","timestamp":"2026-02-19T06:37:28.136Z"}
+{"level":"info","message":"✅ Database connection established successfully.","service":"f1-dashboard-api","timestamp":"2026-02-19T06:39:10.717Z"}
+{"level":"info","message":"✅ Database synchronized successfully.","service":"f1-dashboard-api","timestamp":"2026-02-19T06:39:11.171Z"}
+{"level":"info","message":"Redis connection established successfully.","service":"f1-dashboard-api","timestamp":"2026-02-19T06:39:11.181Z"}
+{"level":"info","message":"🚀 F1 Dashboard API running on port 3001","service":"f1-dashboard-api","timestamp":"2026-02-19T06:39:11.190Z"}
+{"level":"info","message":"📊 Environment: development","service":"f1-dashboard-api","timestamp":"2026-02-19T06:39:11.191Z"}
